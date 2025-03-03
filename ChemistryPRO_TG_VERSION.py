@@ -2,7 +2,7 @@ import telebot
 import requests
 from bs4 import BeautifulSoup
 from telebot import types
-from background import keep_alive
+from background import keep_alive, app
 
 bot = telebot.TeleBot('7510496838:AAE-flarlHJl1BVUewyT4UNK0ILtzTkIveE')
 
