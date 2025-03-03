@@ -2,6 +2,7 @@ import telebot
 import requests
 from bs4 import BeautifulSoup
 from telebot import types
+from background import keep_alive
 
 bot = telebot.TeleBot('7510496838:AAE-flarlHJl1BVUewyT4UNK0ILtzTkIveE')
 
@@ -200,4 +201,6 @@ def molar_mass(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"Произошла ошибка: {str(e)}", reply_markup=markup)
 
+
+keep_alive()
 bot.polling()
