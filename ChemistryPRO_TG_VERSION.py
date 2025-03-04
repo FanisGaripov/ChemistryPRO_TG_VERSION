@@ -30,15 +30,12 @@ def get_configuration(message):
     button_all_commands = types.KeyboardButton(text='/help')
     markup.add(button_all_commands)
     try:
-        # Извлекаем элемент из текста команды
         element = message.text.split(" ")[1]
 
-        # Отправляем POST-запрос к вашему API
-        url = "https://chemistrypro.onrender.com/electronic_configuration"  # Замените на адрес вашего приложения
+        url = "https://chemistrypro.onrender.com/electronic_configuration"
         response = requests.post(url, data={'element': element})
 
         if response.status_code == 200:
-            # Обрабатываем ответ
             soup = BeautifulSoup(response.text, 'html.parser')
             texts = ''
             for tag in soup.find_all(['h5', 'p', 'pre']):
@@ -65,7 +62,6 @@ def complete_reaction(message):
         url = "https://chemistrypro.onrender.com/complete_reaction"
         response = requests.post(url, data={'chemical_formula': "".join(element)})
         if response.status_code == 200:
-            # Обрабатываем ответ
             soup = BeautifulSoup(response.text, 'html.parser')
             text = ''
             final_reaction_header = soup.find('h5', text="Конечная реакция:")
@@ -95,7 +91,6 @@ def uravnivanie(message):
         url = "https://chemistrypro.onrender.com/uravnivanie"
         response = requests.post(url, data={'chemical_formula': "".join(element)})
         if response.status_code == 200:
-            # Обрабатываем ответ
             soup = BeautifulSoup(response.text, 'html.parser')
             text = ''
             final_reaction_header = soup.find('h5').get_text(strip=True)
@@ -122,7 +117,6 @@ def get_reaction_chain(message):
         url = "https://chemistrypro.onrender.com/get_reaction_chain"
         response = requests.post(url, data={'chemical_formula': "".join(element)})
         if response.status_code == 200:
-            # Обрабатываем ответ
             soup = BeautifulSoup(response.text, 'html.parser')
             header_h4 = soup.find('h4')
             text = ''
@@ -153,16 +147,17 @@ def organic_reactions(message):
         url = "https://chemistrypro.onrender.com/organic_reactions"
         response = requests.post(url, data={'chemical_formula': "".join(element)})
         if response.status_code == 200:
-            # Обрабатываем ответ
             soup = BeautifulSoup(response.text, 'html.parser')
             images = soup.find_all('img')
             images_to_send = images[2:]
 
-            # Отправляем каждое изображение
             for img in images_to_send:
-                img_url = img.get('src')  # Получаем URL изображения
-                if img_url:  # Проверяем, что URL существует
-                    bot.send_photo(message.chat.id, img_url, reply_markup=markup)  # Отправляем изображение в чат
+                img_url = img.get('src')
+                if img_url:
+                    try:
+                        bot.send_photo(message.chat.id, img_url, reply_markup=markup)
+                    except Exception as e:
+                        print(f"Произошла ошибка при отправке изображения: {e}")
 
         else:
             print(response.status_code)
