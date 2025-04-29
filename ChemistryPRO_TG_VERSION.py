@@ -5,11 +5,16 @@ from telebot import types
 from background import keep_alive, app
 from dotenv import load_dotenv
 import os
+import pytesseract
+from PIL import Image
+from g4f.client import Client
+from io import BytesIO
 
 
 load_dotenv()
 bot = telebot.TeleBot(os.getenv('TG_TOKEN'))
 user_states = {}
+client = Client()
 
 
 @bot.message_handler(commands=['start'])
@@ -22,7 +27,8 @@ def send_welcome(message):
     get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
     org_reacts = types.KeyboardButton(text='/organic_reactions')
     mol_mass = types.KeyboardButton(text='/molar_mass')
-    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass)
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
     bot.send_message(message.chat.id, "Привет! Напишите /help и получите все команды.", reply_markup=markup)
 
 
@@ -33,7 +39,72 @@ def help(message):
                                       '/equalization <реакция> для уравнивания реакции\n'
                                       '/get_reaction_chain <реакции через знак "="(равно)> для получения цепочки превращений\n'
                                       '/organic_reactions <реакцию(можно словами)> для получения органических реакций(фото)\n'
-                                      '/molar_mass <вещество(реакцию)> для получения молярных масс веществ')
+                                      '/molar_mass <вещество(реакцию)> для получения молярных масс веществ\n'
+                                      '/gpt для диалога с chatgpt(умеет распознавать фото и работать с текстом)')
+
+
+@bot.message_handler(commands=['gpt'])
+def gpt_command(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    button_all_commands = types.KeyboardButton(text='/help')
+    get_conf = types.KeyboardButton(text='/get_configuration')
+    comp_reac = types.KeyboardButton(text='/complete_reaction')
+    equal = types.KeyboardButton(text='/equalization')
+    get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
+    org_reacts = types.KeyboardButton(text='/organic_reactions')
+    mol_mass = types.KeyboardButton(text='/molar_mass')
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
+    user_states[message.chat.id] = 'gpt'
+    bot.send_message(message.chat.id, "Отправьте текст или фото для обработки GPT.", reply_markup=markup)
+
+
+@bot.message_handler(content_types=['photo'], func=lambda message: user_states.get(message.chat.id) == 'gpt')
+def handle_photo(message):
+    try:
+        file_id = message.photo[-1].file_id
+        file_info = bot.get_file(file_id)
+        downloaded_file = bot.download_file(file_info.file_path)
+        image_stream = BytesIO(downloaded_file)
+        image = Image.open(image_stream)
+        to_string = pytesseract.image_to_string(image, lang='rus+eng')
+
+        if not to_string.strip():
+            bot.reply_to(message, "Не удалось распознать текст на изображении.")
+            return
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": to_string}],
+            web_search=False
+        )
+        answer = response.choices[0].message.content
+
+        bot.reply_to(message, f"Распознанный текст:\n{to_string}\n\nОтвет GPT:\n{answer}")
+
+    except Exception as e:
+        bot.reply_to(message, f"Ошибка при обработке изображения: {str(e)}")
+    finally:
+        if message.chat.id in user_states:
+            del user_states[message.chat.id]
+
+
+@bot.message_handler(func=lambda message: user_states.get(message.chat.id) == 'gpt')
+def handle_gpt_text(message):
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": message.text}],
+            web_search=False
+        )
+        answer = response.choices[0].message.content
+
+        bot.reply_to(message, f"Ответ GPT:\n{answer}")
+
+    except Exception as e:
+        bot.reply_to(message, f"Ошибка при обработке запроса: {str(e)}")
+    finally:
+        if message.chat.id in user_states:
+            del user_states[message.chat.id]
 
 
 @bot.message_handler(commands=['get_configuration'])
@@ -46,7 +117,8 @@ def get_configuration(message):
     get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
     org_reacts = types.KeyboardButton(text='/organic_reactions')
     mol_mass = types.KeyboardButton(text='/molar_mass')
-    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass)
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
     element = message.text.split(" ")
     if len(element) > 1:
         element = message.text.split(" ")[1]
@@ -78,7 +150,8 @@ def complete_reaction(message):
     get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
     org_reacts = types.KeyboardButton(text='/organic_reactions')
     mol_mass = types.KeyboardButton(text='/molar_mass')
-    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass)
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
     element = message.text.split(" ")
     if len(element) > 1:
         element = message.text.split(" ")[1:]
@@ -113,7 +186,8 @@ def uravnivanie(message):
     get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
     org_reacts = types.KeyboardButton(text='/organic_reactions')
     mol_mass = types.KeyboardButton(text='/molar_mass')
-    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass)
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
     element = message.text.split(" ")
     if len(element) > 1:
         element = message.text.split(" ")[1:]
@@ -145,7 +219,8 @@ def get_reaction_chain(message):
     get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
     org_reacts = types.KeyboardButton(text='/organic_reactions')
     mol_mass = types.KeyboardButton(text='/molar_mass')
-    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass)
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
     element = message.text.split(" ")
     if len(element) > 1:
         element = message.text.split(" ")[1:]
@@ -181,7 +256,8 @@ def organic_reactions(message):
     get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
     org_reacts = types.KeyboardButton(text='/organic_reactions')
     mol_mass = types.KeyboardButton(text='/molar_mass')
-    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass)
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
     element = message.text.split(" ")
     if len(element) > 1:
         element = message.text.split(" ")[1:]
@@ -218,7 +294,8 @@ def molar_mass(message):
     get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
     org_reacts = types.KeyboardButton(text='/organic_reactions')
     mol_mass = types.KeyboardButton(text='/molar_mass')
-    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass)
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
     element = message.text.split(" ")
     if len(element) > 1:
         element = message.text.split(" ")[1:]
@@ -241,6 +318,22 @@ def molar_mass(message):
         bot.send_message(message.chat.id, "Теперь отправьте вещество или элемент. Например: H2SO4")
 
 
+@bot.message_handler(commands=['gpt'])
+def gpt(message):
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    button_all_commands = types.KeyboardButton(text='/help')
+    get_conf = types.KeyboardButton(text='/get_configuration')
+    comp_reac = types.KeyboardButton(text='/complete_reaction')
+    equal = types.KeyboardButton(text='/equalization')
+    get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
+    org_reacts = types.KeyboardButton(text='/organic_reactions')
+    mol_mass = types.KeyboardButton(text='/molar_mass')
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
+    user_states[message.chat.id] = 'gpt'
+    bot.send_message(message.chat.id, "Теперь отправьте вещество или элемент. Например: H2SO4")
+
+
 
 @bot.message_handler(func=lambda message: True)
 def handle_reaction(message):
@@ -253,7 +346,8 @@ def handle_reaction(message):
     get_reac_ch = types.KeyboardButton(text='/get_reaction_chain')
     org_reacts = types.KeyboardButton(text='/organic_reactions')
     mol_mass = types.KeyboardButton(text='/molar_mass')
-    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass)
+    gpt = types.KeyboardButton(text='/gpt')
+    markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
     if user_id in user_states:
         state = user_states[user_id]
         try:
