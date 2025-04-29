@@ -3,3 +3,5 @@ dotenv
 beautifulsoup4
 flask
 gunicorn
+g4f[all]
+pytesseract
