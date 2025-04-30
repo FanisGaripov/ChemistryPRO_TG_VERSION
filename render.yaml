@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: ChemistryPRO_TG_VERSION
+    runtime: docker
+    dockerfilePath: Dockerfile  # Указывает на ваш Dockerfile
+    envVars:
+      - key: TESSERACT_CMD
+        value: /usr/local/bin/tesseract  # Путь к установленному Tesseract
+      - key: TESSDATA_PREFIX
+        value: /usr/local/share/tessdata  # Путь к языковым данным
+    plan: free  # Бесплатный тарифный план
+    healthCheckPath: /health  # Эндпоинт для проверки здоровья
+    resources:
+      memory: 512MB  # Рекомендуемый объем памяти для Tesseract
