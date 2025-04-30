@@ -12,6 +12,7 @@ from io import BytesIO
 
 
 load_dotenv()
+pytesseract.pytesseract.tesseract_cmd = '/usr/local/bin/tesseract'
 bot = telebot.TeleBot(os.getenv('TG_TOKEN'))
 user_states = {}
 client = Client()
