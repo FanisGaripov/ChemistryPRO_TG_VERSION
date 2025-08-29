@@ -6,7 +6,6 @@ from background import keep_alive, app
 from dotenv import load_dotenv
 import os
 from g4f.client import Client
-from io import BytesIO
 
 
 load_dotenv()
@@ -429,4 +428,5 @@ def handle_reaction(message):
 
 keep_alive()
 bot.polling()
+
 
