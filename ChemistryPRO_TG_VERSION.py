@@ -5,14 +5,11 @@ from telebot import types
 from background import keep_alive, app
 from dotenv import load_dotenv
 import os
-import pytesseract
-from PIL import Image
 from g4f.client import Client
 from io import BytesIO
 
 
 load_dotenv()
-pytesseract.pytesseract.tesseract_cmd = '/usr/local/bin/tesseract'
 bot = telebot.TeleBot(os.getenv('TG_TOKEN'))
 user_states = {}
 client = Client()
@@ -58,35 +55,6 @@ def gpt_command(message):
     markup.add(button_all_commands, get_conf, comp_reac, equal, get_reac_ch, org_reacts, mol_mass, gpt)
     user_states[message.chat.id] = 'gpt'
     bot.send_message(message.chat.id, "Отправьте текст или фото для обработки GPT.", reply_markup=markup)
-
-
-@bot.message_handler(content_types=['photo'], func=lambda message: user_states.get(message.chat.id) == 'gpt')
-def handle_photo(message):
-    try:
-        file_id = message.photo[-1].file_id
-        file_info = bot.get_file(file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-        image_stream = BytesIO(downloaded_file)
-        image = Image.open(image_stream)
-        to_string = pytesseract.image_to_string(image, lang='rus+eng')
-
-        if not to_string.strip():
-            bot.reply_to(message, "Не удалось распознать текст на изображении.")
-            return
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": to_string}],
-            web_search=False
-        )
-        answer = response.choices[0].message.content
-
-        bot.reply_to(message, f"Распознанный текст:\n{to_string}\n\nОтвет GPT:\n{answer}")
-
-    except Exception as e:
-        bot.reply_to(message, f"Ошибка при обработке изображения: {str(e)}")
-    finally:
-        if message.chat.id in user_states:
-            del user_states[message.chat.id]
 
 
 @bot.message_handler(func=lambda message: user_states.get(message.chat.id) == 'gpt')
@@ -461,3 +429,4 @@ def handle_reaction(message):
 
 keep_alive()
 bot.polling()
+
